@@ -3,8 +3,9 @@ GO
 USE db_booksFinalProject;
 GO
 
---Tables------------------------------------------
---Publisher table
+--Tables-===============================================
+
+--create and populate Publisher table
 CREATE TABLE tbl_publishers(
 	Name VARCHAR (50) UNIQUE,
 	PublisherAddress VARCHAR(50),
@@ -82,7 +83,7 @@ VALUES ('Aladdin Paperbacks','50490 Manley Avenue','9327590219'),
 ('William Morrow','6 Milwaukee Point','8075118850'),
 ('William Morrow Paperbacks','87 Upham Court','5182569625');
 
---books table
+--create and populate Books table
 CREATE TABLE tbl_books(
 	BookId INT PRIMARY KEY NOT NULL,
 	Title VARCHAR (300),
@@ -190,7 +191,7 @@ VALUES (987987,'The Lost Tribe','Allen Lane'),
 (17607,'All About Love: New Visions','William Morrow'),
 (14497,'Neverwhere (London Below, #1)','William Morrow Paperbacks');
 
---book authors table
+--create and populate Book authors table
 CREATE TABLE tbl_bookAuthors(
 	BookId INT FOREIGN KEY REFERENCES tbl_books(BookId),
 	AuthorName VARCHAR (50)
@@ -296,7 +297,7 @@ VALUES (1,'J.K. Rowling'),
 (41913,'P.D. James'),
 (43841,'Sharon Kay Penman');
 
--- create Borrower table
+-- create and populate Borrower table
 CREATE TABLE tbl_borrower (
 	CardNo INT PRIMARY KEY NOT NULL IDENTITY (1000000000, 1),
 	Name VARCHAR (50),
@@ -404,8 +405,7 @@ VALUES ('Hester Draysay','0406 Vera Hill','4081841808'),
 ('Godfrey Cheetham','919 Golf View Street','7945331051'),
 ('Johnathon Sprowle','00 Sugar Place','2906298817');
 
-
---create Library Branch table
+--create and populate Library Branch table
 CREATE TABLE tbl_libraryBranch (
 	BranchID INT PRIMARY KEY NOT NULL IDENTITY (1,1),
 	BranchName VARCHAR (50),
@@ -421,7 +421,7 @@ VALUES ('Central','193 Dapin Street'),
 ('Tallahassee','1973 Service Plaza'),
 ('Jiaoyuan','569 Mccormick Trail');
 
---create Book Copies table
+--create and populate Book Copies table
 CREATE TABLE tbl_bookCopies ( 
 	BookID INT FOREIGN KEY REFERENCES tbl_books(BookID),
 	BranchID INT FOREIGN KEY REFERENCES tbl_libraryBranch(BranchID),
@@ -729,7 +729,7 @@ VALUES (987987,2,3),
 (17607,2,5),
 (14497,1,3);
 
---create Book Loans table
+--create and populate Book Loans table
 CREATE TABLE tbl_bookLoans (
 	BookID INT FOREIGN KEY REFERENCES tbl_books(BookID),
 	BranchID INT FOREIGN KEY REFERENCES tbl_libraryBranch(BranchID),
@@ -830,7 +830,7 @@ VALUES (13654,6,1000000037,'6/15/2018','7/6/2018'),
 (5,5,1000000061,'6/22/2018','7/13/2018'),
 (4214,7,1000000092,'6/19/2018','7/10/2018');
 
---loans by branch table (used for query5)
+--create and populate loans by branch table (used for query5)
 CREATE TABLE totalLoansByBranch (
 	branch_id INT,
 	total_loans INT)
@@ -848,15 +848,14 @@ CREATE TABLE tbl_moreThanFive(
 	address varchar(100),
 	count_of_books INT)
 GO
-
 --------------------------------------------------STORED QUERIES---------------------------------------------------------------------
-CREATE PROCEDURE query1
+CREATE PROCEDURE query1 
 AS
-SELECT COUNT(tbl_books.Title) 
-FROM tbl_books
-INNER JOIN tbl_bookLoans ON tbl_books.BookId = tbl_bookLoans.BookID
-INNER JOIN tbl_libraryBranch ON tbl_libraryBranch.BranchID = tbl_bookLoans.BranchID
-WHERE tbl_books.Title = 'The Lost Tribe' AND tbl_libraryBranch.BranchName = 'Sharpstown';
+SELECT BranchName, Title, No_of_copies 
+FROM tbl_bookCopies
+INNER JOIN tbl_books ON tbl_books.BookId = tbl_bookCopies.BookID
+INNER JOIN tbl_libraryBranch ON tbl_libraryBranch.BranchID = tbl_bookCopies.BranchID
+WHERE tbl_books.Title = 'The Lost Tribe' AND tbl_libraryBranch.BranchName='Sharpstown';
 GO
 
 CREATE PROCEDURE query2
@@ -865,7 +864,7 @@ SELECT BranchName, Title, No_of_copies
 FROM tbl_bookCopies
 INNER JOIN tbl_books ON tbl_books.BookId = tbl_bookCopies.BookID
 INNER JOIN tbl_libraryBranch ON tbl_libraryBranch.BranchID = tbl_bookCopies.BranchID
-WHERE tbl_books.Title = 'The Lost Tribe'
+WHERE tbl_books.Title = 'The Lost Tribe';
 GO
 
 CREATE PROCEDURE query3
@@ -882,16 +881,33 @@ FROM tbl_libraryBranch library
 inner join tbl_bookLoans loans on loans.BranchID = library.BranchID
 inner join tbl_books books on books.BookId = loans.BookID
 inner join tbl_borrower borrower on borrower.CardNo = loans.CardNo
-WHERE library.BranchName = 'Sharpstown' AND loans.DueDate = '10/1/2018'
+WHERE library.BranchName = 'Sharpstown' AND loans.DueDate = '10/1/2018';
 GO
 
-CREATE PROCEDURE query5
+CREATE PROCEDURE query5 
 AS
---SELECT branch.BranchName, loans.total_loans
 select * 
 FROM tbl_libraryBranch branch
-inner join totalLoansByBranch loans on branch.BranchID = loans.branch_id
---------------------------------------------------------------------------------------------------------------------------------
+inner join totalLoansByBranch loans on branch.BranchID = loans.branch_id;
+GO
+
+CREATE PROCEDURE query6
+AS
+SELECT borrower.Name, borrower.BorrowerAddress, Count(*) AS NoBooksCheckedOut FROM tbl_borrower borrower
+INNER JOIN tbl_bookLoans loans ON borrower.CardNo = loans.CardNo
+GROUP BY borrower.Name, BorrowerAddress HAVING COUNT(*) > 5;
+GO
+
+CREATE PROCEDURE query7
+AS
+SELECT books.Title, copies.No_of_copies FROM tbl_books books
+	INNER JOIN tbl_bookAuthors authors ON books.BookId=authors.BookId
+	INNER JOIN tbl_bookCopies copies ON copies.BookID=books.BookId
+	INNER JOIN tbl_libraryBranch branch ON branch.BranchID=copies.BranchID
+WHERE authors.AuthorName='Stephen King' and branch.BranchName='Central';
+GO
+
+-------------------------------------------------------------------------------------------------------------------------------
 EXEC query1;
 EXEC query2;
 EXEC query3;
@@ -922,4 +938,5 @@ DROP PROC query6;
 DROP PROC query7;
 GO
 
+USE master;
 DROP DATABASE db_booksFinalProject;
